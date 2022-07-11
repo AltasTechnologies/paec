@@ -1,6 +1,8 @@
 from dataclasses import dataclass
-from .paec_enums import Side, TimeForce
+
 import numpy as np
+
+from .paec_enums import Side, TimeForce
 
 
 @dataclass

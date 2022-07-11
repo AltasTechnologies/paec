@@ -1,12 +1,14 @@
 import asyncio
-from datetime import datetime, timedelta
 import operator
-from typing import AsyncIterable, Optional
+from collections import defaultdict
+from datetime import datetime, timedelta
+from typing import Any, AsyncIterable, DefaultDict, Optional
+
 import numpy as np
 
-from .paec_dataclasses import Candle, OrderBook
-from .paec_enums import Side
 from .constants import COINS, MAX_DEPTH
+from .paec_dataclasses import Account, Candle, Order, OrderBook
+from .paec_enums import Side
 
 
 class Paec:
@@ -15,6 +17,7 @@ class Paec:
         self._prices: dict[str, float] = {
             coin: _compute_hash_coin(coin) for coin in COINS
         }
+        self._orders: DefaultDict[str, set[int]] = defaultdict(set)
 
     async def get_coins(self) -> list[str]:
         """Get all the coins available for trading."""
@@ -44,6 +47,23 @@ class Paec:
             millis = _get_millis()
             bids, asks = self._generate_bids_and_asks(coin, depth)
             yield OrderBook(bids, asks, timestamp=millis)
+
+    async def get_balance(self) -> Account:
+        await asyncio.sleep(0.1)
+        value_usd = np.random.randint(20000, 1000000)
+        return Account(value_usd=value_usd, free_value_usd=value_usd - 10000)
+
+    async def post_order(self, order: Order) -> int:
+        await asyncio.sleep(0.1)
+        id = np.random.randint(100, 100000000)
+        self._orders[order.instrument].add(id)
+        return id
+
+    async def cancel_order(self, instrument: str, id: int) -> None:
+        if instrument not in self._orders or id not in self._orders[instrument]:
+            raise RuntimeError(f"Unknown order {id} for instrument: {instrument}")
+        await asyncio.sleep(0.1)
+        self._orders["instrument"].remove()
 
     def _update_price(self, coin: str, price: Optional[float] = None) -> None:
         if price is None:
