@@ -80,6 +80,7 @@ target/
 # IPython
 profile_default/
 ipython_config.py
+.ipynb_checkpoints/
 
 # pyenv
 .python-version
@@ -127,3 +128,24 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# IDE specific settings
+.vscode/
+.VSCodeCounter/
+.idea/
+*.code-workspace
+
+# Test files
+*_test*.py
+*test.ipynb
+
+# Data files
+*.parquet
+*.csv
+*.xlsx
+*.db
+*.pkl
+*.zip
+*.png
+*.html
+*.lock
