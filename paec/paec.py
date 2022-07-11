@@ -15,7 +15,7 @@ class Paec:
     def __init__(self, exchange: str = "PI_EXCHANGE") -> None:
         self._exchange = exchange
         self._prices: dict[str, float] = {
-            coin: _compute_hash_coin(coin) for coin in COINS
+            coin: np.random.randint(10, 1000) for coin in COINS
         }
         self._orders: DefaultDict[str, set[int]] = defaultdict(set)
 
@@ -44,9 +44,7 @@ class Paec:
         while True:
             self._update_price(coin)
             await asyncio.sleep(0.1)
-            millis = _get_millis()
-            bids, asks = self._generate_bids_and_asks(coin, depth)
-            yield OrderBook(bids, asks, timestamp=millis)
+            yield self._generate_order_book(coin, depth)
 
     async def get_balance(self) -> Account:
         await asyncio.sleep(0.1)
@@ -60,10 +58,11 @@ class Paec:
         return id
 
     async def cancel_order(self, instrument: str, id: int) -> None:
-        if instrument not in self._orders or id not in self._orders[instrument]:
+        pred = instrument not in self._orders
+        if pred or id not in self._orders[instrument]:
             raise RuntimeError(f"Unknown order {id} for instrument: {instrument}")
         await asyncio.sleep(0.1)
-        self._orders["instrument"].remove()
+        self._orders[instrument].remove(id)
 
     def _update_price(self, coin: str, price: Optional[float] = None) -> None:
         if price is None:
@@ -79,39 +78,37 @@ class Paec:
         low, close, high = arr + price
         volume_usd = 10 * np.random.pareto(1) * price
         candle = Candle(
-            open=open,
+            open=price,
             high=high,
             low=low,
             close=close,
             volume_usd=volume_usd,
             timestamp=millis,
         )
-        return close, candle
+        return candle
 
-    def _generate_bids_and_asks(self, coin: str, depth: int) -> OrderBook:
+    def _generate_order_book(self, coin: str, depth: int) -> OrderBook:
         depth = max(depth, MAX_DEPTH)
         millis = _get_millis()
-        bids = self._generate_price_and_size(coin, depth, size=Side.BUY)
-        asks = self._generate_price_and_size(coin, depth, size=Side.SELL)
+        bids = self._generate_price_and_size(coin, depth, side=Side.BUY)
+        asks = self._generate_price_and_size(coin, depth, side=Side.SELL)
         return OrderBook(bids=bids, asks=asks, timestamp=millis)
 
-    def generate_price_and_size(
+    def _generate_price_and_size(
         self, coin: str, depth: int, side: Side
-    ) -> tuple(np.ndarray, np.ndarray):
+    ) -> tuple[np.ndarray, np.ndarray]:
         current_price = self._prices[coin]
         deltas = np.random.lognormal(size=depth)
+        deltas.sort()
         fun = operator.add if side == Side.SELL else operator.sub
         prices = fun(current_price, deltas)
         sizes = 10 * np.random.pareto(1, size=depth)
+        sizes.sort()
         return prices, sizes
 
     def _check_coin(self, coin: str) -> None:
         if coin not in COINS:
             raise ValueError(f"Unknown coin: {coin}")
-
-
-def _compute_hash_coin(coin: str) -> int:
-    return 100 * abs(int(str(hash(coin))[:3]))
 
 
 def _get_millis() -> float:
